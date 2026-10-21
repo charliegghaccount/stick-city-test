@@ -1,6 +1,6 @@
 # Version 1 validation
 
-Validation date: 21 October 2026. This report records the current implementation and separates completed checks from checks still in progress. It does not establish publication or real-device Safari compatibility.
+Validation date: 21 October 2026. This report records the development, deployment and public-site checks. Real-device Safari compatibility remains untested.
 
 ## Completed development checks
 
@@ -11,9 +11,10 @@ Validation date: 21 October 2026. This report records the current implementation
 | Production build | Passed | `npm run build` produces the static site in `dist/` with the `/stick-city-test/` base path |
 | Game-rule and navigation tests | **18 passed** | Economy, progression, persistence, mission/minigame outcomes and district walking routes |
 | Browser gameplay checks | **7 passed** | The final production-build Chromium suite completed in 54.8 seconds; gameplay checks are detailed below |
-| Source publication | Passed | Source commit `4efb520f37a01fd1a7e4ac6b9ad047ac849e3638` pushed to `main` |
-| GitHub Actions install, tests and build | Passed | Run `39553746058` completed these steps successfully |
-| Public deployment | **Blocked: Pages disabled** | `configure-pages` failed with HTTP 404; deployment was skipped. Enabling Pages via API returned HTTP 403, `Resource not accessible by integration`. The expected site still returns 404 |
+| Source publication | Passed | Published commit `d1d90d643de64e76c3b0bad30d792b983479e12f` is on `main` |
+| GitHub Actions install, tests, build and deployment | Passed | Run `39555540365` completed with both build and deployment jobs successful |
+| Public HTTPS page and assets | Passed | The page, JavaScript and stylesheet returned HTTP 200 with certificate verification enabled |
+| Public-browser gameplay | Passed | Touch walking, stopping, building entry, home activity, save/reload and portrait layout passed using the live public responses |
 | Real iPhone / Mobile Safari | Not run | Chromium emulation cannot prove actual Mobile Safari behavior |
 
 The 18 automated tests cover:
@@ -44,12 +45,17 @@ Final gameplay captures were generated and visually inspected:
 
 - [Desktop gameplay](screenshots/gameplay-desktop.png)
 - [Phone portrait gameplay](screenshots/gameplay-phone.png)
+- [Live public game](screenshots/gameplay-live.png)
 
-## Publication blocker
+## Public deployment
 
-The source is published on `main`, but the game is not yet published as a playable website. [Actions run 39553746058](https://github.com/charliegghaccount/stick-city-test/actions/runs/39553746058) passed installation, tests and build, then failed to configure Pages because the repository has not enabled it. The platform integration’s attempted Pages enablement was denied; its push permission does not supply the necessary administration/Pages permission.
+The game is published at **[https://charliegghaccount.github.io/stick-city-test/](https://charliegghaccount.github.io/stick-city-test/)** from `main`, commit `d1d90d643de64e76c3b0bad30d792b983479e12f`. [Actions run 39555540365](https://github.com/charliegghaccount/stick-city-test/actions/runs/39555540365) completed successfully, including the build and deployment jobs.
 
-Open repository **Settings → Pages → Source: GitHub Actions**, save the setting, then rerun the failed workflow. The expected address, `https://charliegghaccount.github.io/stick-city-test/`, currently returns HTTP 404. A successful deployment and live-page verification remain outstanding. See [DEPLOYMENT.md](DEPLOYMENT.md) for exact steps and the recorded commit.
+The public page returned HTTP 200 and the expected title, `Stick City · A new life`. Its generated JavaScript (`index-D5wGov7C.js`, 1,257,762 bytes) and CSS (`index-CstyJ7dd.css`, 21,473 bytes) also returned HTTP 200. These checks used certificate-verified HTTPS requests.
+
+The initial Pages-disabled blocker was resolved by the repository owner enabling **Source: GitHub Actions**. A separate live-origin Chromium check passed: touch movement, stopping, walking to the home entrance, opening its menu, sleeping to advance time, and restoring cash, clock and actual player position after reload. The 390 × 844 portrait viewport had no horizontal overflow, all six page/asset responses across the initial load and reload were HTTP 200, and no page errors occurred.
+
+Chromium did not directly trust the cloud proxy's CA. The live check used Playwright request forwarding (`route.fetch` followed by `route.fulfill`) with unmodified public responses and certificate verification enabled through the platform's configured CA trust. No local build files or mocked response bodies were substituted. This verifies live application behavior; it does not establish native Chromium proxy trust or real iPhone / Mobile Safari compatibility. See [DEPLOYMENT.md](DEPLOYMENT.md) for future deployment troubleshooting.
 
 The final renderer uses Phaser’s Canvas backend with cached static city artwork. This resolved sluggish software-WebGL rendering in the cloud browser. Entrance interaction is event driven, and movement is clamped on low-frame-rate updates. These are implementation choices for the tested environment, not a measurement of performance on every device.
 

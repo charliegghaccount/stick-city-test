@@ -2,7 +2,7 @@
 
 A playable portrait browser RPG inspired by Thomas Bizal’s 2015 iPhone game. Walk around a small city, work for money, build four skills, meet the Mayor and Gang Leader, and save your progress in your browser.
 
-The game source is pushed to `main` and its automated install, tests and production build pass. Public deployment is waiting for one repository setting: **Settings → Pages → Source: GitHub Actions**. Then rerun [the deployment workflow](https://github.com/charliegghaccount/stick-city-test/actions/runs/39553746058). The expected Pages address currently returns 404; [deployment details](docs/DEPLOYMENT.md) explain the permission blocker and exact remaining step.
+**[Play Stick City](https://charliegghaccount.github.io/stick-city-test/)** — open the link on your Mac or phone. GitHub Pages deployment succeeded, and the public page and game assets return HTTP 200. See [deployment details](docs/DEPLOYMENT.md) and [the test report](docs/TEST_REPORT.md) for the validation scope.
 
 This project is an independent recreation. All city artwork is drawn specifically for this game; the original screenshots are research references, not game assets. See [the reference notes](docs/ORIGINAL_REFERENCE.md) for the evidence and approximation limits.
 
@@ -79,6 +79,6 @@ On Linux, Playwright may also require system browser libraries; `npx playwright 
 
 ## Publishing and future work
 
-See [deployment instructions and status](docs/DEPLOYMENT.md). The configured Pages address is only a live deliverable after a successful deployment and page check.
+The game is published through [GitHub Pages](https://charliegghaccount.github.io/stick-city-test/). See [deployment instructions and status](docs/DEPLOYMENT.md) for future updates and troubleshooting.
 
 Future versions can expand the city and data definitions. Driving, property ownership, stocks, deeper careers, police/combat, the original’s larger skill roster and mission/minigame catalogue are outside Version 1. Five authentic promotional screenshots were inspected and used to refine the artwork and HUD. The original’s exact map, economy and animation remain approximations; the reference notes distinguish observations from those implementation choices. See [the test report](docs/TEST_REPORT.md) for validation and visual differences.
