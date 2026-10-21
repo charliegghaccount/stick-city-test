@@ -11,7 +11,9 @@ Validation date: 21 October 2026. This report records the current implementation
 | Production build | Passed | `npm run build` produces the static site in `dist/` with the `/stick-city-test/` base path |
 | Game-rule and navigation tests | **18 passed** | Economy, progression, persistence, mission/minigame outcomes and district walking routes |
 | Browser gameplay checks | **7 passed** | The final production-build Chromium suite completed in 54.8 seconds; gameplay checks are detailed below |
-| Public deployment | Not yet verified | A local build does not establish a publicly playable site |
+| Source publication | Passed | Source commit `4efb520f37a01fd1a7e4ac6b9ad047ac849e3638` pushed to `main` |
+| GitHub Actions install, tests and build | Passed | Run `39553746058` completed these steps successfully |
+| Public deployment | **Blocked: Pages disabled** | `configure-pages` failed with HTTP 404; deployment was skipped. Enabling Pages via API returned HTTP 403, `Resource not accessible by integration`. The expected site still returns 404 |
 | Real iPhone / Mobile Safari | Not run | Chromium emulation cannot prove actual Mobile Safari behavior |
 
 The 18 automated tests cover:
@@ -42,6 +44,12 @@ Final gameplay captures were generated and visually inspected:
 
 - [Desktop gameplay](screenshots/gameplay-desktop.png)
 - [Phone portrait gameplay](screenshots/gameplay-phone.png)
+
+## Publication blocker
+
+The source is published on `main`, but the game is not yet published as a playable website. [Actions run 39553746058](https://github.com/charliegghaccount/stick-city-test/actions/runs/39553746058) passed installation, tests and build, then failed to configure Pages because the repository has not enabled it. The platform integration’s attempted Pages enablement was denied; its push permission does not supply the necessary administration/Pages permission.
+
+Open repository **Settings → Pages → Source: GitHub Actions**, save the setting, then rerun the failed workflow. The expected address, `https://charliegghaccount.github.io/stick-city-test/`, currently returns HTTP 404. A successful deployment and live-page verification remain outstanding. See [DEPLOYMENT.md](DEPLOYMENT.md) for exact steps and the recorded commit.
 
 The final renderer uses Phaser’s Canvas backend with cached static city artwork. This resolved sluggish software-WebGL rendering in the cloud browser. Entrance interaction is event driven, and movement is clamped on low-frame-rate updates. These are implementation choices for the tested environment, not a measurement of performance on every device.
 

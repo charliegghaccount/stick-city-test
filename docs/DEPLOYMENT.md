@@ -2,11 +2,17 @@
 
 Repository: [`charliegghaccount/stick-city-test`](https://github.com/charliegghaccount/stick-city-test).
 
-Expected public address after successful deployment: `https://charliegghaccount.github.io/stick-city-test/`.
+Expected public address after successful deployment: `https://charliegghaccount.github.io/stick-city-test/`. **This address currently returns HTTP 404 and is not a verified playable deployment.**
 
-## Status at initial setup
+## Current publication status
 
-The repository was public and empty, its default branch was `main`, and GitHub Pages was not enabled. The expected address returned HTTP 404. These checks do not establish a live playable deployment. Consult the latest Actions run and verify the page after publishing.
+Source commit [`4efb520f37a01fd1a7e4ac6b9ad047ac849e3638`](https://github.com/charliegghaccount/stick-city-test/commit/4efb520f37a01fd1a7e4ac6b9ad047ac849e3638) was successfully pushed to `main`.
+
+[Actions run 39553746058](https://github.com/charliegghaccount/stick-city-test/actions/runs/39553746058) completed dependency installation, tests and production build successfully. Its `actions/configure-pages` step failed with HTTP 404 because GitHub Pages was not enabled, so the deployment job was skipped.
+
+An API request to enable Pages with `build_type: workflow` was rejected with HTTP 403, `Resource not accessible by integration`. The available integration can push the source but cannot enable this repository feature. The official `actions/configure-pages@v5` enablement path requires a token other than `GITHUB_TOKEN` with administration-write and Pages-write permission.
+
+The remaining action is to enable Pages in the repository settings, then rerun the failed workflow. Installation and the local playable game are verified; public publication is still blocked by this setting.
 
 ## Automatic deployment
 
@@ -14,12 +20,12 @@ The repository was public and empty, its default branch was `main`, and GitHub P
 
 Vite uses `base: '/stick-city-test/'`, so asset URLs work under the repository’s Pages path. The game is entirely static and does not need a backend, database or secret to run.
 
-## If Pages needs enabling
+## Required manual step
 
 1. Open [repository Pages settings](https://github.com/charliegghaccount/stick-city-test/settings/pages).
 2. Set **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. Open [Actions](https://github.com/charliegghaccount/stick-city-test/actions) and select **Build and deploy Stick City**.
-4. Run the workflow on `main`, or push a commit to `main`.
+3. Open [the failed Actions run](https://github.com/charliegghaccount/stick-city-test/actions/runs/39553746058) and select **Re-run jobs → Re-run failed jobs**. Alternatively, select **Build and deploy Stick City** in [Actions](https://github.com/charliegghaccount/stick-city-test/actions) and run it on `main`.
+4. If working with Codex in the setup chat, say when the setting is saved so it can retry and verify publication.
 5. Wait for both `build` and `deploy` jobs to succeed, then open the exact Pages address above.
 
 If a run reports that Actions are disabled, enable repository Actions in **Settings → Actions → General**. If a required approval appears for the `github-pages` environment, approve that deployment in Actions. Repository or account policy can require an administrator to change these settings.
