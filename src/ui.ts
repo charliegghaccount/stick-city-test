@@ -1,5 +1,8 @@
 import { BUILDINGS, ACTIVITIES, MISSIONS, ITEMS } from './content';
 import { GameStore } from './model';
+import { BALANCE, skillXP } from './balance';
+import { COURSES, JOBS, qualificationName } from './careers';
+import { developerMarkup, bindDeveloper } from './developer';
 import type { CityBridge, Mission } from './types';
 
 const esc = (v: unknown) => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
@@ -32,6 +35,7 @@ export class GameUI {
  private feedback = '';
  private currentBuilding = '';
  private frame = 0;
+ private seenCompletion = 0;
  private busy = false;
  private toastTimer?: ReturnType<typeof setTimeout>;
  private panelVersion = 0;
@@ -41,12 +45,12 @@ export class GameUI {
  constructor(store: GameStore) {
   this.store = store;
   document.querySelector('#app')!.innerHTML = `<main id="game-shell" aria-label="Stick City game">
-   <header id="hud"><div class="masthead"><span><b>STICK CITY</b><small>RPG · DISTRICT 01</small></span><span id="save-status">● AUTOSAVED</span></div>
+   <header id="hud"><div class="masthead"><span><b>STICK CITY</b><small>RPG · VERSION 2</small></span><span id="save-status">● AUTOSAVED</span></div>
     <div class="hud-top"><button class="portrait icon-btn" data-main="stats" aria-label="Character statistics">${icon('person')}</button><div class="level-group"><div class="level-label">${icon('star')}<b id="level"></b><span id="xp-label"></span></div><div class="bar xp"><i id="xp-bar"></i></div></div><button class="icon-btn" data-main="missions" aria-label="Messages and missions">${icon('mail')}</button><button class="icon-btn" data-main="map" aria-label="City map">${icon('map')}</button><button class="icon-btn" data-main="settings" aria-label="Settings">${icon('gear')}</button></div>
     <div class="hud-vitals"><span class="clock-stat">${icon('clock')}<b id="clock"></b><small id="day"></small></span><span class="cash-stat">${icon('cash')}<b id="cash"></b></span><span class="vital">${icon('bolt')}<span class="bar energy"><i id="energy-bar"></i><b id="energy-label"></b></span></span><span class="vital">${icon('heart')}<span class="bar health"><i id="health-bar"></i><b id="health-label"></b></span></span></div>
    </header>
    <section id="world-view" aria-label="City. Tap to walk; tap a nearby door to enter."><div id="city-canvas"></div><div id="intro-tip"><b>A new life in Stick City</b><span>Tap to walk. Tap a door to enter.<br>Visit Town Hall for your first mission.</span><button aria-label="Dismiss introduction">×</button></div><div id="toast" role="status" hidden></div><div id="modal-shade" hidden><section id="modal" role="dialog" aria-modal="true" tabindex="-1"></section></div></section>
-   <footer id="game-footer"><div class="location-strip"><span>● <b id="location-label">HOME · WEST DISTRICT</b></span><button id="stop-walking" aria-label="Stop walking">${icon('stop')} STOP</button></div><nav aria-label="Game menus"><button data-main="inventory" aria-label="Inventory">${icon('bag')}<span>ITEMS</span></button><button data-main="missions">${icon('mail')}<span>MISSIONS</span></button><button data-main="stats">${icon('stats')}<span>STATS</span></button><button data-main="map">${icon('map')}<span>MAP</span></button></nav></footer>
+   <footer id="game-footer"><div class="location-strip"><span>● <b id="location-label">HOME · WEST DISTRICT</b></span><button id="activity-status" hidden aria-label="Current activity"></button><button id="stop-walking" aria-label="Stop walking">${icon('stop')} STOP</button></div><nav aria-label="Game menus"><button data-main="inventory" aria-label="Inventory">${icon('bag')}<span>ITEMS</span></button><button data-main="missions">${icon('mail')}<span>MISSIONS</span></button><button data-main="stats">${icon('stats')}<span>STATS</span></button><button data-main="map">${icon('map')}<span>MAP</span></button></nav></footer>
   </main><p class="desktop-help">TAP TO WALK <span>·</span> WASD / ARROW KEYS <span>·</span> E TO ENTER <span>·</span> SPACE TO STOP</p>`;
   this.shell = document.getElementById('game-shell')!;
   this.panel = document.getElementById('modal')!;
@@ -56,6 +60,8 @@ export class GameUI {
   document.querySelector<HTMLButtonElement>('#stop-walking')!.onclick = () => { this.bridge?.stop(); this.toast('Walking stopped.'); };
   window.addEventListener('city-location', (e: Event) => { document.getElementById('location-label')!.textContent = (e as CustomEvent<string>).detail; });
   window.addEventListener('keydown', e => { if (e.code === 'Escape' && this.isOpen && !this.busy) this.close(); });
+  document.getElementById('activity-status')!.onclick = () => this.openActivity();
+  window.addEventListener('keydown', e => { if(e.code === 'F2'){e.preventDefault();if(!this.busy)this.openDeveloper();} });
   store.subscribe(() => this.renderHUD());
  }
 
@@ -70,11 +76,30 @@ export class GameUI {
   document.getElementById('day')!.textContent = `DAY ${Math.floor(s.minutes / 1440) + 1}`;
   document.getElementById('cash')!.textContent = money(s.cash);
   const saving = document.getElementById('save-status')!;
-  saving.textContent = this.store.storageAvailable ? '● AUTOSAVED' : '⚠ SAVE UNAVAILABLE';
-  saving.style.color = this.store.storageAvailable ? '#a9efb3' : '#ffb09a';
+  saving.textContent = !this.store.storageAvailable ? '⚠ SAVE UNAVAILABLE' : s.developerModified ? 'DEV-ALTERED SAVE' : '● AUTOSAVED';
+  saving.style.color = !this.store.storageAvailable ? '#ffb09a' : s.developerModified ? '#ffe18a' : '#a9efb3';
   for (const v of ['energy', 'health'] as const) {
    document.getElementById(`${v}-bar`)!.style.width = `${s[v]}%`;
    document.getElementById(`${v}-label`)!.textContent = `${Math.round(s[v])}`;
+  }
+  const p=s.pending;
+  const activityButton=document.getElementById('activity-status')!;
+  activityButton.hidden=!p;
+  activityButton.textContent=p?`ACTIVITY · ${Math.ceil(p.remainingSeconds)}s`:'';
+  const progress=document.getElementById('activity-progress');
+  if(progress)progress.textContent=p?`${Math.ceil(p.remainingSeconds)} seconds remaining`:'Activity complete';
+  const fill=document.getElementById('activity-fill');if(fill)fill.style.width=p?`${100*(1-p.remainingSeconds/p.totalSeconds)}%`:'100%';
+  const debug=document.getElementById('dev-coordinates'),snapshot=this.bridge?.snapshot();
+  if(debug&&snapshot)debug.textContent=`Coordinates: ${snapshot.position.x.toFixed(1)}, ${snapshot.position.y.toFixed(1)}`;
+  const fps=document.getElementById('dev-fps');if(fps&&snapshot)fps.textContent=`FPS: ${Math.round(snapshot.fps)} · NPCs: ${snapshot.npcs} · Cars: ${snapshot.cars}`;
+  const finishButton=document.getElementById('dev-finish') as HTMLButtonElement|null;if(finishButton)finishButton.disabled=!p;
+  const debugActivity=document.getElementById('dev-activity');if(debugActivity)debugActivity.textContent=p?`Activity: ${Math.ceil(p.remainingSeconds)}s remaining`:'No activity running.';
+  if(this.seenCompletion!==this.store.completionVersion){
+    this.seenCompletion=this.store.completionVersion;
+    this.toast(this.store.lastMessage);
+    if(this.isOpen&&this.currentBuilding&&!this.busy){this.feedback=this.store.lastMessage;this.openBuilding(this.currentBuilding);}
+    else if(this.isOpen&&this.panel.dataset.view==='stats'&&!this.busy)this.openStats();
+    else if(this.isOpen&&document.getElementById('activity-progress')&&!this.busy)this.openActivity();
   }
  }
 
@@ -93,6 +118,7 @@ export class GameUI {
   this.panelVersion++;
   this.busy = false;
   this.shade.hidden = false;
+  this.panel.dataset.view='';
   this.panel.innerHTML = `<div class="panel-heading"><div><small>${esc(badge)}</small><h1>${esc(name)}</h1></div><button class="close-panel" aria-label="Exit menu">×</button></div><div class="panel-subtitle">${esc(subtitle)}</div><div class="panel-body">${this.feedback ? `<div class="feedback" role="status">${esc(this.feedback)}</div>` : ''}${body}</div><div class="panel-footer"><span>${icon('cash')} ${money(this.store.state.cash)}</span><button class="back-button">BACK TO CITY ↩</button></div>`;
   this.panel.querySelector<HTMLButtonElement>('.close-panel')!.onclick = () => this.close();
   this.panel.querySelector<HTMLButtonElement>('.back-button')!.onclick = () => this.close();
@@ -127,17 +153,20 @@ export class GameUI {
   if (!building) return;
   this.currentBuilding = id;
   this.store.visit(id);
-  const activities = ACTIVITIES.filter(a => a.building === id);
+  const activities = ACTIVITIES.filter(a => a.building === id).map(a => this.store.quoteActivity(a));
   let body = `<div class="building-flavour"><span class="building-mark" style="--building-color:#${building.color.toString(16).padStart(6, '0')}">${esc(building.short.slice(0, 2))}</span><p>${esc(building.description)}</p></div>`;
+  if(this.store.state.pending)body+=this.activityMarkup();
+  if(activities.some(a=>a.career))body+=`<p class="career-heading">CAREER LADDER · Positions unlock through skills, levels and qualifications.</p><p class="fine-print">Your qualifications: ${esc(this.store.state.qualifications.map(qualificationName).join(', ')||'None yet. Study at City College.')}</p>`;
   body += activities.map(a => {
-   const requirements = [a.requireLevel ? `Level ${a.requireLevel}` : '', a.requireSkill ? `${title(a.requireSkill[0])} ${a.requireSkill[1]}` : ''].filter(Boolean);
-   const changes = [a.cash ? `${a.cash < 0 ? '−' : '+'}${money(Math.abs(a.cash))}` : '', a.energy ? `${a.energy < 0 ? '−' : '+'}${Math.abs(a.energy)} energy` : '', a.health ? `${a.health < 0 ? '−' : '+'}${Math.abs(a.health)} health` : '', a.minutes ? `${a.minutes} min` : '', a.xp ? `+${a.xp} XP` : ''].filter(Boolean);
-   const locked = (a.requireLevel || 0) > this.store.state.level || !!(a.requireSkill && this.store.state.skills[a.requireSkill[0]] < a.requireSkill[1]);
-   return `<div class="activity"><div><h2>${esc(a.label)}</h2><p>${esc(a.description)}</p><small class="activity-cost">${esc(changes.join(' · '))}</small>${requirements.length ? `<small class="requirements ${locked ? 'locked' : ''}">${locked ? '🔒 ' : '✓ '}${esc(requirements.join(' · '))}</small>` : ''}</div><button aria-label="${esc(a.label)}" data-activity="${esc(a.id)}" ${locked ? 'disabled' : ''}>${locked ? 'LOCKED' : a.item ? 'BUY' : 'GO'}</button></div>`;
+   const requirements=this.store.requirements(a), missing=requirements.some(r=>!r.met);
+   const qualified=!!a.qualification&&this.store.state.qualifications.includes(a.qualification);
+   const changes=[a.cash?`${a.cash<0?'−':'+'}${money(Math.abs(a.cash))}`:'',a.energy?`${a.energy<0?'−':'+'}${Math.abs(a.energy)} energy`:'',a.health?`+${a.health} health`:'',`${a.minutes} game min`,`${Math.ceil(a.seconds)} real sec`,a.xp?`+${a.xp} XP`:'',a.skill?`+${a.skillXP||0} ${a.skill} XP`:''].filter(Boolean);
+   const disabled=missing||qualified||!!this.store.state.pending;
+   return `<div class="activity ${a.career?'career-role':''}"><div><h2>${esc(a.label)}${qualified?' ✓':''}</h2><p>${esc(a.description)}</p><small class="activity-cost">${esc(changes.join(' · '))}</small>${requirements.length?`<small class="requirements">${requirements.map(r=>`<span class="${r.met?'met':'locked'}">${r.met?'✓':'✗'} ${esc(r.text)}</span>`).join(' · ')}</small>`:''}</div><button aria-label="${esc(a.label)}" data-activity="${esc(a.id)}" ${disabled?'disabled':''}>${qualified?'EARNED':missing?'LOCKED':a.item?'BUY':a.career?'WORK':a.qualification?'ENROL':'GO'}</button></div>`;
   }).join('');
   if (id === 'bank') body += `<div class="bank-balances"><span>CASH <b>${money(this.store.state.cash)}</b></span><span>IN BANK <b>${money(this.store.state.bank)}</b></span></div><label class="amount-label">Amount <input id="bank-amount" type="number" inputmode="numeric" min="1" step="1" value="50"></label><div class="button-pair"><button id="deposit">DEPOSIT →</button><button id="withdraw">← WITHDRAW</button></div><p class="fine-print">Your bank balance is saved automatically. No fees.</p>`;
   if (id === 'casino') body += `<div class="casino-preview"><b>★ LUCKY THREE ★</b><div class="preview-reels">7 <span>◆</span> 7</div><p>Three spinning reels. Pick your stake and test your luck.</p><button id="open-slots">PLAY THE SLOTS</button></div>`;
-  if (id === 'diner' || id === 'post') body += `<div class="activity"><div><h2>Precision shift</h2><p>Stop the moving marker in the green zone. Better timing earns a better wage.</p><small class="activity-cost">8 energy · 30 min · Up to $40</small></div><button id="open-work">PLAY</button></div>`;
+  if (id === 'diner' || id === 'post') body += `<div class="activity"><div><h2>Precision shift</h2><p>Stop the moving marker in the green zone. Better timing earns a better wage.</p><small class="activity-cost">${BALANCE.timing.energy} energy · ${BALANCE.timing.minutes} min · Up to $${BALANCE.timing.maxPay} + ${BALANCE.timing.xp} XP</small></div><button id="open-work" ${this.store.state.pending?'disabled':''}>PLAY</button></div>`;
   if (id === 'townhall' || id === 'gang') body += this.missionCards(MISSIONS.filter(m => m.giver === id));
   this.show(building.name, building.kind.toUpperCase(), body, 'STICK CITY · OPEN');
   this.panel.querySelectorAll<HTMLButtonElement>('[data-activity]').forEach(b => b.onclick = () => { const r = this.store.perform(b.dataset.activity!); this.feedback = r.message; this.openBuilding(id); });
@@ -146,6 +175,21 @@ export class GameUI {
   this.panel.querySelector<HTMLButtonElement>('#withdraw')?.addEventListener('click', () => { this.feedback = this.store.withdraw(Number((this.panel.querySelector('#bank-amount') as HTMLInputElement).value)).message; this.openBuilding(id); });
   this.panel.querySelector<HTMLButtonElement>('#open-slots')?.addEventListener('click', () => { this.feedback = ''; this.openSlots(); });
   this.panel.querySelector<HTMLButtonElement>('#open-work')?.addEventListener('click', () => { this.feedback = ''; this.openTiming('work'); });
+ }
+
+ private activityMarkup() {
+  const p=this.store.state.pending;
+  return p?`<div class="active-activity"><b>${esc(ACTIVITIES.find(a=>a.id===p.id)?.label||'Timing challenge')}</b><p id="activity-progress">${Math.ceil(p.remainingSeconds)} seconds remaining</p><div class="bar xp"><i id="activity-fill" style="width:${100*(1-p.remainingSeconds/p.totalSeconds)}%"></i></div><small>Active play only. Progress survives reload; switching tabs pauses the timer.</small></div>`:'<p class="feedback">No activity running. Choose work, training or rest at a building.</p>';
+ }
+ private openActivity() {
+  this.currentBuilding='';
+  this.show('Current activity','COSTS RESERVED · REWARDS ON COMPLETION',this.activityMarkup(),'CITY LIFE');
+ }
+ private openDeveloper() {
+  if(this.busy)return;
+  this.currentBuilding='';
+  this.show('Developer Menu','TESTING ONLY · F2',developerMarkup(this.store),'DEVELOPER TOOLS');
+  bindDeveloper(this.panel,this.store,this.bridge,()=>this.openDeveloper(),message=>{this.feedback=message;this.toast(message);});
  }
 
  private openInventory() {
@@ -181,7 +225,8 @@ export class GameUI {
 
  private openStats() {
   const s = this.store.state;
-  this.show('Character statistics', 'MAKE A LITTLE PROGRESS EVERY DAY', `<div class="character-summary">${icon('person')}<div><h2>New kid in the city</h2><p>LEVEL ${s.level} · ${s.xp}/${this.store.xpNeeded()} XP</p></div></div><div class="stats-grid"><span>CASH<b>${money(s.cash)}</b></span><span>BANK BALANCE<b>${money(s.bank)}</b></span><span>ENERGY<b>${s.energy}/100</b></span><span>HEALTH<b>${s.health}/100</b></span><span>LOCATIONS VISITED<b>${s.visited.length}/${BUILDINGS.length}</b></span><span>MISSIONS COMPLETE<b>${Object.values(s.missions).filter(v => v === 'complete').length}/${MISSIONS.length}</b></span></div><h2 class="section-label">SKILLS</h2>${Object.entries(s.skills).map(([k, v]) => `<div class="skill-row"><b>${esc(title(k))}</b><div class="skill-track"><i style="width:${Math.min(v / 10 * 100, 100)}%"></i></div><strong>${v}</strong></div>`).join('')}<p class="fine-print">Study, train, and work to raise your skills. Better jobs unlock as your level and intelligence grow.</p>`, 'PLAYER PROFILE');
+  this.show('Character statistics', 'MAKE A LITTLE PROGRESS EVERY DAY', `<div class="character-summary">${icon('person')}<div><h2>New kid in the city</h2><p>LEVEL ${s.level} · ${s.xp}/${this.store.xpNeeded()} XP</p></div></div><div class="stats-grid"><span>CASH<b>${money(s.cash)}</b></span><span>BANK BALANCE<b>${money(s.bank)}</b></span><span>ENERGY<b>${s.energy}/100</b></span><span>HEALTH<b>${s.health}/100</b></span><span>LOCATIONS VISITED<b>${s.visited.length}/${BUILDINGS.length}</b></span><span>MISSIONS COMPLETE<b>${Object.values(s.missions).filter(v => v === 'complete').length}/${MISSIONS.length}</b></span></div><h2 class="section-label">SKILLS</h2>${Object.entries(s.skills).map(([k, v]) => `<div class="skill-row"><b>${esc(title(k))}</b><div class="skill-track"><i style="width:${Math.min(s.skillXP[k as keyof typeof s.skillXP] / skillXP(v) * 100, 100)}%"></i></div><strong>${v}</strong><small>${s.skillXP[k as keyof typeof s.skillXP]}/${skillXP(v)} XP</small></div>`).join('')}<h2 class="section-label">QUALIFICATIONS</h2><p>${esc(s.qualifications.map(qualificationName).join(', ')||'None yet. Visit City College for courses.')}</p><h2 class="section-label">CAREERS</h2>${[...new Set(JOBS.map(j=>j.career))].map(c=>`<p><b>${esc(c)}</b>: ${JOBS.filter(j=>j.career===c).map(j=>`${esc(j.label)} ${this.store.requirements(j).every(r=>r.met)?'✓':'(locked)'}`).join(' → ')}</p>`).join('')}<p class="fine-print">Skill bars show earned XP towards the next level. Train higher skills over longer sessions. Qualifications are permanent.</p>`, 'PLAYER PROFILE');
+  this.panel.dataset.view='stats';
  }
 
  private openMap() {
@@ -190,10 +235,11 @@ export class GameUI {
  }
 
  private openSettings(confirmReset = false) {
-  const body = `<div class="settings-copy"><h2>Your city is saved on this device.</h2><p>Position, money, inventory, skills, and missions save automatically. Keep using this browser to continue your game.</p></div><button class="wide" id="continue-game">CONTINUE GAME</button><button class="wide" id="save-game">SAVE NOW</button><h2 class="section-label">HOW TO PLAY</h2><ul class="instructions"><li>Tap a pavement or street to walk there.</li><li>Tap a nearby door, or press E, to enter.</li><li>Use WASD or arrow keys on a computer.</li><li>Press Space or STOP to cancel your walk.</li><li>Work for cash, study to unlock jobs, and sleep at home to recover.</li></ul><div class="reset-area">${confirmReset ? '<p><b>Start over?</b> This erases your saved progress on this device.</p><button class="danger wide" id="confirm-reset">YES, START A NEW GAME</button><button class="wide" id="cancel-reset">KEEP MY PROGRESS</button>' : '<button class="danger wide" id="new-game">NEW GAME / RESET</button>'}</div><p class="fine-print">Stick City Remake · Version 1<br>Original artwork made for this browser recreation.</p>`;
+  const body = `<div class="settings-copy"><h2>Your city is saved on this device.</h2><p>Position, money, inventory, skills, and missions save automatically. Keep using this browser to continue your game.</p></div><button class="wide" id="continue-game">CONTINUE GAME</button><button class="wide" id="save-game">SAVE NOW</button><button id="open-developer" class="dev-entry">DEV · TESTING TOOLS</button><h2 class="section-label">HOW TO PLAY</h2><ul class="instructions"><li>Tap a pavement or street to walk there.</li><li>Tap a nearby door, or press E, to enter.</li><li>Use WASD or arrow keys on a computer.</li><li>Press Space or STOP to cancel your walk.</li><li>Work for cash, study to unlock jobs, and sleep at home to recover.</li></ul><div class="reset-area">${confirmReset ? '<p><b>Start over?</b> This erases your saved progress on this device.</p><button class="danger wide" id="confirm-reset">YES, START A NEW GAME</button><button class="wide" id="cancel-reset">KEEP MY PROGRESS</button>' : '<button class="danger wide" id="new-game">NEW GAME / RESET</button>'}</div><p class="fine-print">Stick City Remake · Version 2<br>Original artwork made for this browser recreation.</p>`;
   this.show('Settings', 'SAVING & GAME CONTROLS', body, 'STICK CITY');
+  this.panel.querySelector<HTMLButtonElement>('#open-developer')!.onclick = () => this.openDeveloper();
   this.panel.querySelector<HTMLButtonElement>('#continue-game')!.onclick = () => this.close();
-  this.panel.querySelector<HTMLButtonElement>('#save-game')!.onclick = () => { this.store.save(); this.feedback = this.store.storageAvailable ? 'Progress saved on this device.' : 'Browser storage is unavailable. Progress cannot be saved in this browsing mode.'; this.openSettings(); };
+  this.panel.querySelector<HTMLButtonElement>('#save-game')!.onclick = () => { const p=this.bridge?.snapshot().position;if(p)this.store.moveTo(p.x,p.y);this.store.save(); this.feedback = this.store.storageAvailable ? 'Progress saved on this device.' : 'Browser storage is unavailable. Progress cannot be saved in this browsing mode.'; this.openSettings(); };
   this.panel.querySelector<HTMLButtonElement>('#new-game')?.addEventListener('click', () => this.openSettings(true));
   this.panel.querySelector<HTMLButtonElement>('#cancel-reset')?.addEventListener('click', () => this.openSettings());
   this.panel.querySelector<HTMLButtonElement>('#confirm-reset')?.addEventListener('click', () => { this.store.reset(); this.bridge?.resetPosition(); this.close(); this.toast('A new day. A new start. Welcome to Stick City!'); });
@@ -202,7 +248,7 @@ export class GameUI {
  openNPC(name: string) {
   if (this.busy) return;
   this.feedback = '';
-  this.show(name, 'A FACE IN THE NEIGHBOURHOOD', `<div class="npc-portrait">${icon('person')}</div><p class="dialogue">“New around here? The Mayor at Town Hall is always looking for a helping hand. And don't work yourself to exhaustion — the café sells a decent coffee.”</p><button class="wide" id="npc-chat">SAY HELLO</button><div class="crime-warning"><h2>Light fingers?</h2><p>Try to lift a wallet. Stop the marker in the green zone. A failed attempt can cost health and a fine.</p><small>8 energy · 30 min · Real risk, real reward</small><button class="wide" id="npc-crime">ATTEMPT PICKPOCKET</button></div>`, 'STREET CONVERSATION');
+  this.show(name, 'A FACE IN THE NEIGHBOURHOOD', `<div class="npc-portrait">${icon('person')}</div><p class="dialogue">“New around here? The Mayor at Town Hall is always looking for a helping hand. And don't work yourself to exhaustion — the café sells a decent coffee.”</p><button class="wide" id="npc-chat">SAY HELLO</button><div class="crime-warning"><h2>Light fingers?</h2><p>Try to lift a wallet. Stop the marker in the green zone. A failed attempt can cost health and a fine.</p><small>8 energy · 30 min · Real risk, real reward</small><button class="wide" id="npc-crime" ${this.store.state.pending?'disabled':''}>ATTEMPT PICKPOCKET</button></div>`, 'STREET CONVERSATION');
   this.panel.querySelector<HTMLButtonElement>('#npc-chat')!.onclick = () => this.toast(`${name}: “Good luck out there. See you around!”`);
   this.panel.querySelector<HTMLButtonElement>('#npc-crime')!.onclick = () => this.openTiming('pickpocket');
  }
@@ -210,7 +256,7 @@ export class GameUI {
  private openTiming(mode: 'work' | 'pickpocket') {
   this.feedback = '';
   const crime = mode === 'pickpocket';
-  this.show(crime ? 'Light fingers' : 'Precision shift', crime ? 'HIGH RISK · KEEP YOUR NERVE' : 'GOOD TIMING. BETTER PAY.', `<div class="timing-illustration">${icon(crime ? 'bag' : 'bolt')}</div><p class="game-explainer">${crime ? 'Watch the moving marker. A stop in the green zone improves your chance of lifting the wallet. Even a perfect attempt carries risk.' : 'Keep the orders moving. Stop the marker in the green zone for a perfect shift.'}</p><div class="timing-meter" aria-label="Moving timing marker"><div class="timing-zone"></div><div id="timing-needle"></div></div><div class="meter-labels"><span>TOO EARLY</span><b>PERFECT</b><span>TOO LATE</span></div><button class="wide timing-stop" id="timing-stop">STOP!</button><p class="fine-print">Tap STOP or press Space. ${crime ? 'Costs 8 energy and 30 minutes. A miss risks a fine and injury.' : 'Costs 8 energy and 30 minutes. A precise shift pays up to $40.'}</p>`, 'SKILL CHALLENGE');
+  this.show(crime ? 'Light fingers' : 'Precision shift', crime ? 'HIGH RISK · KEEP YOUR NERVE' : 'GOOD TIMING. BETTER PAY.', `<div class="timing-illustration">${icon(crime ? 'bag' : 'bolt')}</div><p class="game-explainer">${crime ? 'Watch the moving marker. A stop in the green zone improves your chance of lifting the wallet. Even a perfect attempt carries risk.' : 'Keep the orders moving. Stop the marker in the green zone for a perfect shift.'}</p><div class="timing-meter" aria-label="Moving timing marker"><div class="timing-zone"></div><div id="timing-needle"></div></div><div class="meter-labels"><span>TOO EARLY</span><b>PERFECT</b><span>TOO LATE</span></div><button class="wide timing-stop" id="timing-stop">STOP!</button><p class="fine-print">Tap STOP or press Space. ${crime ? 'Costs 8 energy and 30 minutes. A miss risks a fine and injury.' : 'Costs 8 energy and 30 minutes. A precise shift pays the displayed maximum. Rewards arrive after the activity timer.'}</p>`, 'SKILL CHALLENGE');
   const needle = document.getElementById('timing-needle')!;
   const start = performance.now();
   let pos = 0;
@@ -223,7 +269,7 @@ export class GameUI {
    window.removeEventListener('keydown', key);
    const result = this.store.finishTiming(mode, Math.max(0, 1 - Math.abs(pos - .5) * 2));
    this.feedback = result.message;
-   this.show(crime ? 'The moment of truth' : 'Shift complete', result.ok ? 'NICE WORK' : 'BETTER LUCK NEXT TIME', `<div class="challenge-result ${result.ok ? 'success' : 'failure'}">${result.ok ? '✓' : '!'}</div><button id="retry-timing" class="wide">TRY AGAIN</button>`, 'SKILL CHALLENGE');
+   this.show(crime ? 'The moment of truth' : 'Precision shift', result.ok ? 'TIMING RECORDED' : 'TRY AGAIN', `<div class="challenge-result ${result.ok ? 'success' : 'failure'}">${result.ok ? '✓' : '!'}</div>${this.store.state.pending?this.activityMarkup():''}<button id="retry-timing" class="wide" ${this.store.state.pending?'disabled':''}>TRY AGAIN</button>`, 'SKILL CHALLENGE');
    this.panel.querySelector<HTMLButtonElement>('#retry-timing')!.onclick = () => this.openTiming(mode);
   };
   const key = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); stop(); } };

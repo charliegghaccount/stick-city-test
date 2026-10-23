@@ -1,4 +1,4 @@
-# Stick City RPG — Version 1
+# Stick City RPG — Version 2
 
 A playable portrait browser RPG inspired by Thomas Bizal’s 2015 iPhone game. Walk around a small city, work for money, build four skills, meet the Mayor and Gang Leader, and save your progress in your browser.
 
@@ -20,19 +20,29 @@ An easy first day: visit Town Hall and accept the Mayor’s introduction, explor
 
 ## What is playable
 
-The district has 16 locations: home, café, general store, diner, college, bank, Town Hall, gym, offices, casino, park, clinic, post depot, library, gang club and garage. Each has an activity or interaction.
+V2 retains the original 16-location district: home, café, general store, diner, college, bank, Town Hall, gym, offices, casino, park, clinic, post depot, library, gang club and garage. Each has an activity or interaction.
 
-Money, bank balance, health, energy, level, XP, skills, inventory, location, elapsed time and mission progress are saved locally. There are four expandable skills: efficiency, charm, intelligence and strength. XP carries over when you level up.
+Money, bank balance, health, energy, level, XP, skills, inventory, location, elapsed time and mission progress are saved locally. There are four skills: efficiency, charm, intelligence and strength. Each earns partial skill XP; higher levels require more effort. Character XP also carries over between levels. Courses grant permanent qualifications.
 
-Jobs include washing dishes, delivering post, office assistance and garage work. More demanding jobs require skills or levels. Shops sell consumable items; the café and diner serve food. The bank accepts whole-dollar deposits and withdrawals.
+There are 12 working job roles: three hospitality roles, three corporate roles, two healthcare roles, two retail roles, and the existing postal/workshop jobs. Higher positions require clearly listed skills, levels and qualifications. Six college courses provide those qualifications. Shops sell consumable items; the café and diner serve food. The bank accepts whole-dollar deposits and withdrawals.
 
-Two Mayor missions introduce exploration and work. The Gang Leader’s mission asks for a successful pickpocket attempt. Timing affects pickpocket success, but even a well-timed attempt carries a risk of losing cash and health. The post depot has a timing-based sorting shift. The casino has animated slot reels, a selectable bet and a displayed paytable.
+Two Mayor missions introduce exploration and work. The Gang Leader’s mission asks for a successful pickpocket attempt. Timing affects pickpocket success, but even a well-timed attempt carries a risk of losing cash and health. The post depot has a timing-based sorting shift. The casino has animated slot reels, a selectable bet and a displayed paytable. Repeatable rewards are reduced and activity timers prevent instant job/training spam.
 
-Cars and pedestrians move through the district. Version 1 does not include driving or vehicle purchases.
+Cars and pedestrians move through the district. V2 uses continuous rounded traffic lanes with following gaps, braking and collision checks. Player driving and vehicle purchases remain outside scope.
+
+## Activity timing and progression
+
+Activities reserve costs when started and pay rewards once their visible timer finishes. You can browse menus or explore while they run. The footer's ACTIVITY button shows progress. Only active-tab time counts; pending progress survives reload. Free sleep/rest grants no XP. The initial worker-and-rest simulation reaches level 5 in approximately 74 active minutes, excluding travel and menus. This is a provisional model, not a measured human playthrough; see [BALANCING.md](docs/BALANCING.md).
+
+## Developer Menu
+
+Open **Settings → DEV · TESTING TOOLS**, or press **F2**. Sections provide infinite energy/health, 1×/2×/3×/5× movement, noclip, safe teleports, cash/XP/level/skill editing, all qualifications, time controls, NPC/traffic pause, resource recovery, explicit activity completion, save/export/import/reset and coordinates/FPS.
+
+Temporary modifiers reset on reload. Progression-affecting tools and imports mark the save **DEV-ALTERED**. Export before resetting; reset requires confirmation. JSON imports are schema-validated and never evaluated as code. Turning noclip off recovers the player to walkable terrain. Ordinary gameplay restrictions remain active unless a developer control is explicitly used.
 
 ## Saving and resetting
 
-Progress is stored on this device in this browser. Refreshing the page preserves it when browser storage is available. The settings menu provides Continue and a confirmed New Game reset.
+V1 saves migrate automatically at the existing storage key, retaining earned levels, skills, money, items and mission progress. A pre-migration backup is retained. Progress is stored on this device in this browser. Refreshing the page preserves it when browser storage is available. The settings menu provides Continue and a confirmed New Game reset.
 
 Saves do not sync between a Mac and an iPhone, between browsers, or between different site addresses. Clearing site data removes the save. Private browsing or restricted storage may prevent persistence; the game reports unavailable storage.
 
@@ -68,10 +78,13 @@ On Linux, Playwright may also require system browser libraries; `npx playwright 
 | File | Purpose |
 | --- | --- |
 | `src/content.ts` | Buildings, activities, items and missions |
+| `src/balance.ts`, `src/careers.ts` | Economy, XP curves, timer scaling, job paths and courses |
+| `src/developer.ts` | Isolated developer menu and save tools |
+| `src/traffic.ts` | Testable lane following, braking and vehicle spacing |
 | `src/types.ts` | Shared expandable game data contracts |
 | `src/model.ts` | Progression, economy, mission rules and save validation |
 | `src/navigation.ts` | Collision-aware walking routes |
-| `src/art.ts` | Original procedural 2D city, character and vehicle artwork |
+| `src/art.ts`, `src/art-assets.ts` | Original 2D world and reusable building/environment archetypes |
 | `src/scene.ts` | Phaser world, camera, movement and animated street life |
 | `src/ui.ts`, `src/style.css` | Portrait HUD, mobile menus and minigame controls |
 | `tests/` | Game-rule and browser checks |
@@ -81,4 +94,4 @@ On Linux, Playwright may also require system browser libraries; `npx playwright 
 
 The game is published through [GitHub Pages](https://charliegghaccount.github.io/stick-city-test/). See [deployment instructions and status](docs/DEPLOYMENT.md) for future updates and troubleshooting.
 
-Future versions can expand the city and data definitions. Driving, property ownership, stocks, deeper careers, police/combat, the original’s larger skill roster and mission/minigame catalogue are outside Version 1. Five authentic promotional screenshots were inspected and used to refine the artwork and HUD. The original’s exact map, economy and animation remain approximations; the reference notes distinguish observations from those implementation choices. See [the test report](docs/TEST_REPORT.md) for validation and visual differences.
+Future versions can expand the city and data definitions. Driving, property ownership, stocks, deeper careers, police/combat, the original’s larger skill roster and mission/minigame catalogue are outside Version 2. Five authentic promotional screenshots were inspected and used to refine the artwork and HUD. The original’s exact map, economy and animation remain approximations; the reference notes distinguish observations from those implementation choices. See [V2 validation](docs/V2_VALIDATION.md), [balance notes](docs/BALANCING.md), and the historical [V1 test report](docs/TEST_REPORT.md).
