@@ -6,17 +6,15 @@ Public game: **[https://charliegghaccount.github.io/stick-city-test/](https://ch
 
 ## Current publication status
 
-Branch: `main`. Published commit: [`d1d90d643de64e76c3b0bad30d792b983479e12f`](https://github.com/charliegghaccount/stick-city-test/commit/d1d90d643de64e76c3b0bad30d792b983479e12f).
+**Version 2 is live** at the existing public address. Branch: `main`. Deployed code: [`1f32fa67525b212fd6cf1e5637a70014d89a5af8`](https://github.com/charliegghaccount/stick-city-test/commit/1f32fa67525b212fd6cf1e5637a70014d89a5af8).
 
-[Actions run 39555540365](https://github.com/charliegghaccount/stick-city-test/actions/runs/39555540365) completed successfully, including both the build and deployment jobs. GitHub Pages is enabled with `build_type: workflow` and HTTPS enforcement.
+[Actions run 39923951182](https://github.com/charliegghaccount/stick-city-test/actions/runs/39923951182) passed installation, 34 model/navigation/traffic tests, type checking, production build and Pages deployment. The 11-case production-browser suite also passed locally.
 
-Verified public HTTPS requests returned HTTP 200 for the page, its JavaScript (`assets/index-D5wGov7C.js`, 1,257,762 bytes) and its stylesheet (`assets/index-CstyJ7dd.css`, 21,473 bytes). The page title is `Stick City · A new life`. Certificate verification remained enabled for these checks.
+Verified public HTTPS requests returned HTTP 200 for the page, JavaScript (`assets/index-DuE_a6oE.js`, 1,287,643 bytes), and stylesheet (`assets/index-BXXcZSLo.css`, 24,393 bytes). The public-origin browser check passed V1 save migration, touch movement and stopping, the Developer Menu, safe teleport, an actual timed coffee purchase, cash/qualification tools, save/reload, reset of temporary modifiers and a 390 × 844 portrait viewport. There were no page errors.
 
-The initial run was blocked because Pages was disabled and the integration could not enable it. The repository owner enabled **Settings → Pages → Source: GitHub Actions**, resolving that blocker. No further Pages setting change is required for the current deployment.
+The cloud proxy's CA was not trusted directly by Chromium. Public responses were forwarded unmodified through Playwright's certificate-verifying request client, which trusts the platform CA. No local build files or mocked response bodies were substituted. This remains separate from a real iPhone / Mobile Safari test.
 
-Public-browser gameplay verification passed at the live origin: touch walking, stopping, reaching a building entrance, opening the home menu, sleeping, restoring saved time/cash/position after reload, and a 390 × 844 portrait viewport. The page and assets returned HTTP 200 without page errors. See the [live gameplay screenshot](screenshots/gameplay-live.png).
-
-The cloud proxy's CA was not trusted directly by Chromium. The live check forwarded unmodified public responses through Playwright's certificate-verifying request client, which trusts the platform CA. HTTPS verification remained enabled; no responses were replaced with local build files. This checks live application behavior and remains separate from a real iPhone / Mobile Safari test.
+Existing V1 saves migrate automatically at the same local-storage key. No new deployment URL, Pages setting or player installation is required. See [V2 balance notes](BALANCING.md), [validation](V2_VALIDATION.md), and the [live screenshot](screenshots/v2-gameplay-live.png).
 
 ## Automatic deployment
 

@@ -15,7 +15,11 @@ V2 retains the same district coordinates and overhead view. It adds warmer roof 
 
 ## Browser and publication
 
-Pending: commit/push, existing GitHub Pages deployment and a public-origin gameplay smoke check. The final build and focused JSON/migration browser regressions passed again after the storage-quota fix. Actual iPhone / Mobile Safari testing is not available in this environment and must not be described as verified.
+V2 code commit [`1f32fa6`](https://github.com/charliegghaccount/stick-city-test/commit/1f32fa67525b212fd6cf1e5637a70014d89a5af8) is pushed to `main`. [Workflow 39923951182](https://github.com/charliegghaccount/stick-city-test/actions/runs/39923951182) successfully installed, tested, built and deployed the game to the existing [public URL](https://charliegghaccount.github.io/stick-city-test/). The final build and focused JSON/migration browser regressions passed again after the storage-quota fix.
+
+Public page, JavaScript and CSS responses were all HTTP 200. A separate public-origin browser check seeded a real V1-format fixture and confirmed preserved money/levels/skills/items/missions, conversion to V2, touch movement and stopping, developer teleport, an actual 4.5-second coffee transaction, cash and qualification tools, save/reload, temporary-modifier reset, and portrait fit. All six page/asset responses across initial load and reload were 200; no page errors occurred.
+
+Live responses were forwarded unmodified with Playwright `route.fetch`/`route.fulfill`, preserving HTTPS certificate verification through the platform CA. The cloud proxy's CA is not directly trusted by Chromium; no TLS checks were disabled and no local responses were substituted. Actual iPhone / Mobile Safari remains untested.
 
 ## Before and after
 
@@ -24,6 +28,8 @@ The following captures were inspected directly. V2 is brighter and more detailed
 | V1 | V2 |
 | --- | --- |
 | ![V1 city](screenshots/gameplay-desktop.png) | ![V2 city](screenshots/v2-gameplay-desktop.png) |
+
+Live public capture: [V2 live](screenshots/v2-gameplay-live.png).
 
 Additional captures: [V2 phone](screenshots/v2-gameplay-phone.png), [Developer Menu](screenshots/v2-developer.png), [career requirements](screenshots/v2-careers.png).
 

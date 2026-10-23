@@ -2,7 +2,7 @@
 
 A playable portrait browser RPG inspired by Thomas Bizal’s 2015 iPhone game. Walk around a small city, work for money, build four skills, meet the Mayor and Gang Leader, and save your progress in your browser.
 
-**[Play Stick City](https://charliegghaccount.github.io/stick-city-test/)** — open the link on your Mac or phone. GitHub Pages deployment succeeded, and the public page and game assets return HTTP 200. See [deployment details](docs/DEPLOYMENT.md) and [the test report](docs/TEST_REPORT.md) for the validation scope.
+**[Play Stick City](https://charliegghaccount.github.io/stick-city-test/)** — open the link on your Mac or phone. Version 2 is deployed and verified. Existing V1 progress migrates automatically; refresh an already-open game to load the update. See [deployment details](docs/DEPLOYMENT.md) and [the test report](docs/TEST_REPORT.md) for the validation scope.
 
 This project is an independent recreation. All city artwork is drawn specifically for this game; the original screenshots are research references, not game assets. See [the reference notes](docs/ORIGINAL_REFERENCE.md) for the evidence and approximation limits.
 
