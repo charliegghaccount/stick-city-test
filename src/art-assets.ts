@@ -50,6 +50,8 @@ export function drawBuilding(scene:Phaser.Scene,g:G,b:Building){
     rect(g,wx-2,y+h-31,32,23,0x425a5c);rect(g,wx,y+h-29,28,18,0x55e4ef);
     rect(g,wx+2,y+h-27,4,14,0xddffff);rect(g,wx,y+h-20,28,1,0xa4ffff);rect(g,wx-3,y+h-9,34,3,0xf2e8ce);
   }
+  // Reusable façade piers and tile joints make small buildings readable at phone scale.
+  for(let px=8;px<w-4;px+=44){rect(g,x+px,y+h-38,3,32,0xf4eed8);rect(g,x+px+3,y+h-38,1,32,shade(b.color,-12));}
   const roofH=h-48;
   rect(g,x-3,y-3,w+6,roofH+6,0x40514f);rect(g,x,y,w,roofH,b.roof,0x566561);
   rect(g,x+7,y+7,w-14,roofH-14,shade(b.roof,10),shade(b.roof,-14));
@@ -79,7 +81,7 @@ export function drawBuilding(scene:Phaser.Scene,g:G,b:Building){
   const sw=Math.min(w-20,b.short.length*10+26);
   rect(g,x+(w-sw)/2-2,y+roofH-24,sw+4,28,0x415451);rect(g,x+(w-sw)/2,y+roofH-23,sw,25,0xfff2c7,style.accent);
   cityLabel(scene,x+w/2,y+roofH-10,b.short,0x293b40,15);
-  if(style.awning)for(let i=0;i<Math.floor(w/14);i++)rect(g,x+4+i*14,y+h-43,14,9,i%2?0xfff2d1:style.accent);
+  if(style.awning)for(let i=0;i<Math.floor(w/14);i++){rect(g,x+4+i*14,y+h-43,14,9,i%2?0xfff2d1:style.accent);g.fillStyle(i%2?0xfff2d1:style.accent).fillCircle(x+11+i*14,y+h-34,7);}
   rect(g,b.door.x-17,y+h-34,34,34,0x314a4f);rect(g,b.door.x-13,y+h-31,26,29,0x6bd8e5);
   rect(g,b.door.x-10,y+h-29,4,25,0xd6ffff);rect(g,b.door.x-1,y+h-30,2,28,0x466f78);rect(g,b.door.x+7,y+h-16,3,3,0xffe487);
   rect(g,b.door.x-20,y+h+1,40,14,0xe4dfcc,0x8f9c8d);rect(g,b.door.x-18,y+h+15,36,15,0xdad2b6);

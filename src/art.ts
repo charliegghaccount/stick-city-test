@@ -83,3 +83,9 @@ export function makeCar(scene:Phaser.Scene,color:number){
   g.fillStyle(0xe7e8dc).fillRect(-7,-32,14,2).fillRect(-7,30,14,2);g.fillStyle(0x263b40).fillRect(-17,-6,4,4).fillRect(13,-6,4,4);
   c.add(g);return c;
 }
+
+export function makeOfficer(scene:Phaser.Scene){
+ const person=makePerson(scene,0x4f87cf),g=scene.add.graphics();
+ g.fillStyle(0x234c91).fillRect(-9,-14,18,6);g.lineStyle(1,0x172e48).strokeRect(-9,-14,18,6);g.fillStyle(0xffd85b).fillCircle(0,-11,2);
+ person.add(g);person.setDepth(13);return person;
+}

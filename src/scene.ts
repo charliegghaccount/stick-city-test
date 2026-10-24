@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { BUILDINGS } from './content';
 import { GameStore } from './model';
 import type { GameUI } from './ui';
-import { paintCity, makePerson, makeCar, animatePerson } from './art';
+import { paintCity, makePerson, makeCar, animatePerson, makeOfficer } from './art';
+import { PursuitSimulation } from './pursuit';
+import { CRIME } from './crime';
 import { TrafficSimulation } from './traffic';
 import { blocked, findPath, WORLD } from './navigation';
 import type { Position, CityBridge, Result } from './types';
@@ -16,6 +18,10 @@ export class CityScene extends Phaser.Scene implements CityBridge {
   private npcs:NPC[]=[];
   private cars:Phaser.GameObjects.Container[]=[];
   private traffic=new TrafficSimulation();
+  private pursuit?:PursuitSimulation;
+  private pursuitSerial=0;
+  private officers:Phaser.GameObjects.Container[]=[];
+  private policeBullets!:Phaser.GameObjects.Graphics;
   private simulationTime=0;
   private previousNoclip=false;
   private marker!:Phaser.GameObjects.Graphics;
@@ -24,6 +30,7 @@ export class CityScene extends Phaser.Scene implements CityBridge {
   create(){
     paintCity(this,BUILDINGS);
     this.marker=this.add.graphics().setDepth(3);
+    this.policeBullets=this.add.graphics().setDepth(14);
     this.player=makePerson(this,0x559ce0,true).setScale(1.12).setPosition(this.store.state.position.x,this.store.state.position.y);
     if(blocked(this.player.x,this.player.y,BUILDINGS))this.teleport(this.player.x,this.player.y);
     this.cameras.main.setBounds(0,0,WORLD.width,WORLD.height).setZoom(.82).startFollow(this.player,true,.12,.12);
@@ -67,10 +74,11 @@ export class CityScene extends Phaser.Scene implements CityBridge {
   }
   private enterNearby(){
     if(this.ui.isOpen)return;
+    if(this.store.state.pursuit){this.ui.toast('You are wanted. Run and use buildings as cover!');return;}
     const b=BUILDINGS.find(b=>Math.hypot(b.door.x-this.player.x,b.door.y-this.player.y)<65);
     if(b){this.stop();this.store.visit(b.id);this.ui.openBuilding(b.id);}else this.ui.toast('Walk to an entrance, or tap a building to enter.');
   }
-  goToBuilding(id:string){const b=BUILDINGS.find(b=>b.id===id);if(!b)return;this.walk(b.door,()=>{this.store.visit(id);this.ui.openBuilding(id);});}
+  goToBuilding(id:string){const b=BUILDINGS.find(b=>b.id===id);if(!b)return;this.walk(b.door,this.store.state.pursuit?undefined:()=>{if(!this.store.state.pursuit){this.store.visit(id);this.ui.openBuilding(id);}});}
   private walk(p:Position,arrival?:()=>void){
     if(Phaser.Math.Distance.Between(this.player.x,this.player.y,p.x,p.y)<24){this.stop();arrival?.();return;}
     const bounded={x:Phaser.Math.Clamp(p.x,20,WORLD.width-20),y:Phaser.Math.Clamp(p.y,20,WORLD.height-20)};
@@ -79,31 +87,45 @@ export class CityScene extends Phaser.Scene implements CityBridge {
     this.path=path;this.arrival=arrival;
     this.marker.clear().lineStyle(2,0xffe69b,.85).strokeCircle(p.x,p.y,12).lineStyle(1,0xffe69b,.6).strokeCircle(p.x,p.y,18);
   }
+  private moveBy(dx:number,dy:number):boolean{
+    const before={x:this.player.x,y:this.player.y},steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/4));
+    for(let i=0;i<steps;i++){
+      const x=this.player.x+dx/steps,y=this.player.y+dy/steps;
+      if(x>=20&&x<=WORLD.width-20&&(this.store.modifiers.noclip||!blocked(x,this.player.y,BUILDINGS)))this.player.x=x;
+      if(y>=20&&y<=WORLD.height-20&&(this.store.modifiers.noclip||!blocked(this.player.x,y,BUILDINGS)))this.player.y=y;
+    }
+    return Math.hypot(this.player.x-before.x,this.player.y-before.y)>1e-9;
+  }
   update(time:number,delta:number){
     if(!this.player)return;
     const dt=Math.min(delta,100)/1000;
-    if(!document.hidden)this.store.advanceRealTime(Math.min(delta,1000)/1000);
+    if(!document.hidden)this.store.tickSimulation(Math.min(delta,1000)/1000);
     if(this.previousNoclip&&!this.store.modifiers.noclip){
       this.stop();
       if(blocked(this.player.x,this.player.y,BUILDINGS))this.teleport(this.player.x,this.player.y);
     }
     this.previousNoclip=this.store.modifiers.noclip;
     const k=this.keys;
-    if(this.ui.isOpen){if(!this.wasOpen)this.stop();this.wasOpen=true;}
+    if(this.ui.isOpen){if(!this.wasOpen)this.stop();this.wasOpen=true;animatePerson(this.player,time,false);}
     else{
       this.wasOpen=false;
       if(Phaser.Input.Keyboard.JustDown(k.SPACE)||Phaser.Input.Keyboard.JustDown(k.ESC))this.stop();
-      let dx=Number(k.D.isDown||k.RIGHT.isDown)-Number(k.A.isDown||k.LEFT.isDown),dy=Number(k.S.isDown||k.DOWN.isDown)-Number(k.W.isDown||k.UP.isDown);
-      const keyboard=dx!==0||dy!==0;
-      let distanceToTarget=Infinity;
-      if(keyboard)this.stop();
-      else if(this.path.length){const target=this.path[0],dist=Math.hypot(target.x-this.player.x,target.y-this.player.y);distanceToTarget=dist;if(dist<4){this.path.shift();if(!this.path.length){this.marker.clear();const fn=this.arrival;this.arrival=undefined;fn?.();}}else{dx=(target.x-this.player.x)/dist;dy=(target.y-this.player.y)/dist;}}
-      const len=Math.hypot(dx,dy);
-      if(len){const step=Math.min(120*this.store.modifiers.speed*dt,distanceToTarget);dx=dx/len*step;dy=dy/len*step;
-        if((this.store.modifiers.noclip||!blocked(this.player.x+dx,this.player.y,BUILDINGS))&&this.player.x+dx>=20&&this.player.x+dx<=WORLD.width-20)this.player.x+=dx;
-        if((this.store.modifiers.noclip||!blocked(this.player.x,this.player.y+dy,BUILDINGS))&&this.player.y+dy>=20&&this.player.y+dy<=WORLD.height-20)this.player.y+=dy;
-        animatePerson(this.player,time,true);
-      }else animatePerson(this.player,time,false);
+      const dx=Number(k.D.isDown||k.RIGHT.isDown)-Number(k.A.isDown||k.LEFT.isDown),dy=Number(k.S.isDown||k.DOWN.isDown)-Number(k.W.isDown||k.UP.isDown);
+      let budget=120*this.store.modifiers.speed*(1+this.store.equipmentBonus('speedBonus'))*dt,moved=false;
+      if(dx||dy){this.stop();const len=Math.hypot(dx,dy);moved=this.moveBy(dx/len*budget,dy/len*budget);}
+      else{
+        // Consume the full distance budget across waypoints: touch walking must be
+        // as fast as keyboard walking so police do not gain a frame-rate advantage.
+        for(let step=0;this.path.length&&budget>0&&step<64;step++){
+          const target=this.path[0],x=target.x-this.player.x,y=target.y-this.player.y,distance=Math.hypot(x,y);
+          if(distance<.01){this.path.shift();continue;}
+          const travel=Math.min(budget,distance);if(travel<1e-6)break;const walked=this.moveBy(x/distance*travel,y/distance*travel);moved=moved||walked;budget-=travel;
+          if(!walked){this.stop();break;}if(travel===distance)this.path.shift();
+        }
+        if(!this.path.length&&this.arrival){this.marker.clear();const fn=this.arrival;this.arrival=undefined;fn();}
+        else if(!this.path.length)this.marker.clear();
+      }
+      animatePerson(this.player,time,moved);
     }
     if(time-this.lastSave>1500){this.store.moveTo(this.player.x,this.player.y);this.lastSave=time;}
     const nearest=BUILDINGS.reduce((best,b)=>Math.hypot(b.door.x-this.player.x,b.door.y-this.player.y)<Math.hypot(best.door.x-this.player.x,best.door.y-this.player.y)?b:best);
@@ -115,8 +137,24 @@ export class CityScene extends Phaser.Scene implements CityBridge {
       this.traffic.step(dt);
     }
     this.traffic.cars.forEach((car,i)=>this.cars[i].setPosition(car.x,car.y).setRotation(car.rotation));
+    this.updatePolice(dt,time);
   }
 
+  private updatePolice(dt:number,time:number){
+    const wanted=this.store.state.pursuit;
+    if(!wanted){if(this.pursuit){this.officers.forEach(o=>o.destroy());this.officers=[];this.pursuit=undefined;}this.policeBullets.clear();return;}
+    if(!this.pursuit||this.pursuitSerial!==wanted.serial){
+      this.officers.forEach(o=>o.destroy());this.pursuit=new PursuitSimulation(this.player,BUILDINGS);this.pursuitSerial=wanted.serial;
+      this.officers=this.pursuit.officers.map(()=>makeOfficer(this));
+    }
+    if(!this.store.modifiers.paused&&!document.hidden){
+      const hits=this.pursuit.step(dt,this.player);
+      for(let i=0;i<hits;i++)if(this.store.takePoliceDamage(CRIME.shotDamage)){this.teleport(this.store.state.position.x,this.store.state.position.y);break;}
+    }
+    this.pursuit.officers.forEach((officer,i)=>{this.officers[i].setPosition(officer.x,officer.y);animatePerson(this.officers[i],time+i*300,officer.path.length>0&&!this.store.modifiers.paused);});
+    this.policeBullets.clear().fillStyle(0xffe88a);
+    for(const b of this.pursuit.bullets)this.policeBullets.fillCircle(b.x,b.y,3);
+  }
   /** Read-only snapshot for browser smoke tests and future accessibility tools. */
-  snapshot(){return {position:{x:this.player?.x??this.store.state.position.x,y:this.player?.y??this.store.state.position.y},camera:{x:this.cameras?.main?.scrollX??0,y:this.cameras?.main?.scrollY??0},moving:this.path.length>0,npcs:this.npcs.length,cars:this.cars.length,fps:this.game?.loop?.actualFps??0};}
+  snapshot(){return {position:{x:this.player?.x??this.store.state.position.x,y:this.player?.y??this.store.state.position.y},camera:{x:this.cameras?.main?.scrollX??0,y:this.cameras?.main?.scrollY??0},moving:this.path.length>0,npcs:this.npcs.length,cars:this.cars.length,fps:this.game?.loop?.actualFps??0,police:this.officers.length,wanted:this.store.state.pursuit?.remaining??0};}
 }
