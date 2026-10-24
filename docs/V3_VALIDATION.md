@@ -26,7 +26,9 @@ Captures: [Thieving/robbery](screenshots/v3-thieving.png), [police pursuit](scre
 
 ## Deployment
 
-Pending: final build/readability checks, commit/push, existing Pages workflow and public-origin gameplay verification.
+Code commit [`8153436`](https://github.com/charliegghaccount/stick-city-test/commit/8153436ffc45cbdbf1d348e880216baf0b99e111) is live at the unchanged [Pages URL](https://charliegghaccount.github.io/stick-city-test/). [Workflow 40058245755](https://github.com/charliegghaccount/stick-city-test/actions/runs/40058245755) passed all build/deploy jobs, including 48 rule tests and production typecheck/build.
+
+The actual public-origin browser check verified HTTP 200 HTML/JS/CSS, V2 pending migration paid once, touch movement, developer teleport, two immediate job payments, ten qualifications, Thieving editing, armed police damage, wanted save/reload, modifier reset and portrait layout, with no page errors. Public responses were forwarded unmodified by the platform-CA-trusting Playwright request client because Chromium itself lacks the cloud proxy CA; no certificate bypass or local asset substitution was used. See [live screenshot](screenshots/v3-gameplay-live.png) and [deployment details](DEPLOYMENT.md).
 
 ## Scope and limits
 

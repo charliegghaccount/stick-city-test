@@ -6,15 +6,15 @@ Public game: **[https://charliegghaccount.github.io/stick-city-test/](https://ch
 
 ## Current publication status
 
-**Version 2 is live** at the existing public address. Branch: `main`. Deployed code: [`1f32fa67525b212fd6cf1e5637a70014d89a5af8`](https://github.com/charliegghaccount/stick-city-test/commit/1f32fa67525b212fd6cf1e5637a70014d89a5af8).
+**Version 3 is live** at the existing public address. Branch: `main`. Deployed code: [`8153436ffc45cbdbf1d348e880216baf0b99e111`](https://github.com/charliegghaccount/stick-city-test/commit/8153436ffc45cbdbf1d348e880216baf0b99e111).
 
-[Actions run 39923951182](https://github.com/charliegghaccount/stick-city-test/actions/runs/39923951182) passed installation, 34 model/navigation/traffic tests, type checking, production build and Pages deployment. The 11-case production-browser suite also passed locally.
+[Actions run 40058245755](https://github.com/charliegghaccount/stick-city-test/actions/runs/40058245755) passed installation, 48 rule/navigation/traffic/pursuit tests, type checking, production build and Pages deployment. The 16-case production-browser suite passed locally; four movement/UI cases passed again after the final movement correction.
 
-Verified public HTTPS requests returned HTTP 200 for the page, JavaScript (`assets/index-DuE_a6oE.js`, 1,287,643 bytes), and stylesheet (`assets/index-BXXcZSLo.css`, 24,393 bytes). The public-origin browser check passed V1 save migration, touch movement and stopping, the Developer Menu, safe teleport, an actual timed coffee purchase, cash/qualification tools, save/reload, reset of temporary modifiers and a 390 × 844 portrait viewport. There were no page errors.
+Public page, JavaScript (`assets/index-C-N4cxAP.js`, 1,311,353 bytes) and stylesheet (`assets/index-BHHYbxgE.css`, 25,683 bytes) all returned HTTP 200. The public-origin browser check verified V2 paid pending work settling once, Thieving initialization, touch movement/stopping, Developer Menu and safe teleport, two successive instant job payments, ten qualifications, Thieving editing, armed police spawning and damage, wanted-state persistence through reload, temporary modifier reset, and 390 × 844 portrait layout. There were no page errors.
 
 The cloud proxy's CA was not trusted directly by Chromium. Public responses were forwarded unmodified through Playwright's certificate-verifying request client, which trusts the platform CA. No local build files or mocked response bodies were substituted. This remains separate from a real iPhone / Mobile Safari test.
 
-Existing V1 saves migrate automatically at the same local-storage key. No new deployment URL, Pages setting or player installation is required. See [V2 balance notes](BALANCING.md), [validation](V2_VALIDATION.md), and the [live screenshot](screenshots/v2-gameplay-live.png).
+Existing V1/V2 saves migrate automatically at the same local-storage key. Paid V2 pending activities settle immediately once without charging costs again. No new deployment URL, Pages setting or player installation is required. See [balance notes](BALANCING.md), [V3 validation](V3_VALIDATION.md), [crime research](THIEVING_REFERENCE.md), and the [live screenshot](screenshots/v3-gameplay-live.png).
 
 ## Automatic deployment
 
